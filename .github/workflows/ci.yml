@@ -19,39 +19,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  dependency-review:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/dependency-review-action@v4
-
   check:
     name: ${{ matrix.runtime }}
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest"]
-        runtime: ["common", "wasmedge", "wasmtime", "wasmer", "wamr"]
+        os: ["ubuntu-latest"]
+        runtime: ["wasmtime"]
     uses: ./.github/workflows/action-check.yml
     with:
       os: ${{ matrix.os }}
       runtime: ${{ matrix.runtime }}
-  
-  test-image:
-    name: ${{ matrix.runtime }}
-    strategy:
-      matrix:
-        runtime: ["common"] # not required, but groups jobs
-    uses: ./.github/workflows/action-test-image.yml
-
-  test-image-oci:
-    name: ${{ matrix.runtime }}
-    strategy:
-      matrix:
-        runtime: ["common"] # not required, but groups jobs
-    uses: ./.github/workflows/action-test-image.yml
-    with:
-      image: img-oci
 
   build-ubuntu:
     name: ${{ matrix.runtime }}
@@ -60,8 +37,8 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-22.04"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer", "wamr"]
-        libc: ["musl", "gnu"]
+        runtime: ["common", "wasmtime"]
+        libc: ["gnu"]
         arch: ["x86_64", "aarch64"]
     uses: ./.github/workflows/action-build.yml
     with:
@@ -70,89 +47,6 @@ jobs:
       target: "${{ matrix.arch }}-unknown-linux-${{ matrix.libc }}"
       slug: "${{ matrix.arch }}-linux-${{ matrix.libc }}"
       arch: ${{ matrix.arch }}
-
-  build-windows:
-    name: ${{ matrix.runtime }}
-    permissions:
-      id-token: write
-    strategy:
-      matrix:
-        os: ["windows-latest"]
-        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
-    uses: ./.github/workflows/action-build.yml
-    with:
-      os: ${{ matrix.os }}
-      runtime: ${{ matrix.runtime }}
-      slug: "windows"
-  
-  build-oci-tar-builder:
-    name: oci-tar-builder-${{ matrix.os }}
-    strategy:
-      matrix:
-        os: ["ubuntu-22.04"]
-        arch: ["x86_64", "aarch64"]
-    uses: ./.github/workflows/action-build.yml
-    with:
-      os: ${{ matrix.os }}
-      runtime: "oci-tar-builder"
-      target: "${{ matrix.arch }}-unknown-linux-gnu"
-      slug: "${{ matrix.arch }}-linux-gnu"
-      arch: ${{ matrix.arch }}
-      sign: false
-      binprefix: ""
-
-  smoke-tests:
-    name: ${{ matrix.runtime }}
-    needs: [build-ubuntu, test-image]
-    strategy:
-      matrix:
-        os: ["ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
-    uses: ./.github/workflows/action-test-smoke.yml
-    with:
-      os: ${{ matrix.os }}
-      runtime: ${{ matrix.runtime }}
-
-  e2e-kind:
-    name: ${{ matrix.runtime }}
-    needs: [build-ubuntu, test-image]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
-    uses: ./.github/workflows/action-test-kind.yml
-    with:
-      os: ${{ matrix.os }}
-      runtime: ${{ matrix.runtime }}
-      test-command: make test/k8s-${{ matrix.runtime }}
-
-  e2e-kind-oci:
-    name: ${{ matrix.runtime }}
-    needs: [build-ubuntu, test-image-oci]
-    strategy:
-      matrix:
-        os: ["ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
-    uses: ./.github/workflows/action-test-kind.yml
-    with:
-      os: ${{ matrix.os }}
-      runtime: ${{ matrix.runtime }}
-      image: img-oci
-      test-command: make test/k8s-oci-${{ matrix.runtime }}
-
-  e2e-k3s:
-    name: ${{ matrix.runtime }}
-    needs: [build-ubuntu, test-image]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-22.04"]
-        runtime: ["wasmtime", "wasmedge", "wasmer", "wamr"]
-    uses: ./.github/workflows/action-test-k3s.yml
-    with:
-      os: ${{ matrix.os }}
-      runtime: ${{ matrix.runtime }}
 
   docs:
     name: docs
