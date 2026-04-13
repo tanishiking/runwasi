@@ -1,3 +1,4 @@
+mod config;
 mod http_proxy;
 pub mod instance;
 

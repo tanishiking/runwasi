@@ -9,8 +9,10 @@ containerd-shim-wasm = { workspace = true, features = ["opentelemetry"] }
 libc = { workspace = true }
 log = { workspace = true }
 hyper = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["signal", "macros"] }
 tokio-util = { workspace = true, features = ["rt"] }
+toml = "0.8"
 
 wasmtime = { workspace = true }
 wasmtime-wasi = { workspace = true }
@@ -20,6 +22,7 @@ wasmtime-wasi-http = { workspace = true }
 containerd-shim-wasm = { workspace = true, features = ["testing"] }
 serial_test = { workspace = true }
 reqwest = { version = "0.12", default-features=false, features = ["blocking"] }
+temp-env = "0.3"
 
 [[bin]]
 name = "containerd-shim-wasmtime-v1"

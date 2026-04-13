@@ -17,6 +17,7 @@ use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
+use crate::config::{WASMTIME_TOML_CONFIG, create_engine_config};
 use crate::http_proxy::serve_conn;
 
 /// Represents the WASI API that the component is targeting.
@@ -61,18 +62,8 @@ pub struct WasmtimeSandbox {
 
 impl Default for WasmtimeSandbox {
     fn default() -> Self {
-        let mut config = wasmtime::Config::new();
-
-        // Disable Wasmtime parallel compilation for the tests
-        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
-        config.parallel_compilation(!cfg!(test));
-        config.wasm_component_model(true); // enable component linking
-        config.async_support(true); // must be on
-
-        if use_pooling_allocator_by_default() {
-            let cfg = wasmtime::PoolingAllocationConfig::default();
-            config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
-        }
+        let config =
+            create_engine_config(&WASMTIME_TOML_CONFIG, true, use_pooling_allocator_by_default);
 
         Self {
             engine: wasmtime::Engine::new(&config)
@@ -133,13 +124,7 @@ impl Shim for WasmtimeShim {
 
     #[allow(refining_impl_trait)]
     async fn compiler() -> Option<WasmtimeCompiler> {
-        let mut config = wasmtime::Config::new();
-
-        // Disable Wasmtime parallel compilation for the tests
-        // see https://github.com/containerd/runwasi/pull/405#issuecomment-1928468714 for details
-        config.parallel_compilation(!cfg!(test));
-        config.wasm_component_model(true); // enable component linking
-        config.async_support(true); // must be on
+        let config = create_engine_config(&WASMTIME_TOML_CONFIG, false, || false);
 
         let engine = wasmtime::Engine::new(&config)
             .expect("failed to create wasmtime precompilation engine");
