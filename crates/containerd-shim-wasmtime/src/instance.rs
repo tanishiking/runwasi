@@ -69,6 +69,10 @@ impl Default for WasmtimeSandbox {
         config.wasm_component_model(true); // enable component linking
         config.async_support(true); // must be on
 
+        config.wasm_gc(true);
+        config.wasm_function_references(true);
+        config.wasm_exceptions(true);
+
         if use_pooling_allocator_by_default() {
             let cfg = wasmtime::PoolingAllocationConfig::default();
             config.allocation_strategy(wasmtime::InstanceAllocationStrategy::Pooling(cfg));
