@@ -14,10 +14,11 @@ use wasmtime::component::{self, Component, ResourceTable};
 use wasmtime::{Config, Module, Precompiled, Store};
 use wasmtime_cli_flags::CommonOptions;
 use wasmtime_wasi::p2::bindings::Command;
-use wasmtime_wasi::preview1::{self as wasi_preview1, WasiP1Ctx};
+use wasmtime_wasi::p1::{self as wasi_p1, WasiP1Ctx};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
-use wasmtime_wasi_http::bindings::ProxyPre;
-use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
+use wasmtime_wasi_http::WasiHttpCtx;
+use wasmtime_wasi_http::p2::bindings::ProxyPre;
+use wasmtime_wasi_http::p2::{WasiHttpCtxView, WasiHttpView};
 
 use crate::http_proxy::serve_conn;
 
@@ -71,6 +72,7 @@ impl Default for WasmtimeSandbox {
 
         Self {
             engine: wasmtime::Engine::new(&config)
+                .map_err(anyhow::Error::from)
                 .context("failed to create wasmtime engine")
                 .unwrap(),
             cancel: CancellationToken::new(),
@@ -106,12 +108,12 @@ impl WasiView for WasiPreview2Ctx {
 }
 
 impl WasiHttpView for WasiPreview2Ctx {
-    fn ctx(&mut self) -> &mut wasmtime_wasi_http::WasiHttpCtx {
-        &mut self.wasi_http
-    }
-
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.resource_table
+    fn http(&mut self) -> WasiHttpCtxView<'_> {
+        WasiHttpCtxView {
+            ctx: &mut self.wasi_http,
+            table: &mut self.resource_table,
+            hooks: Default::default(),
+        }
     }
 }
 
@@ -216,7 +218,7 @@ impl WasmtimeSandbox {
         let mut module_linker = wasmtime::Linker::new(&self.engine);
 
         log::debug!("init linker");
-        wasi_preview1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiP1Ctx| {
+        wasi_p1::add_to_linker_async(&mut module_linker, |wasi_ctx: &mut WasiP1Ctx| {
             wasi_ctx
         })?;
 
@@ -234,6 +236,7 @@ impl WasmtimeSandbox {
         start_func
             .call_async(&mut store, &[], &mut [])
             .await
+            .map_err(anyhow::Error::from)
             .into_error_code()
     }
 
@@ -256,7 +259,7 @@ impl WasmtimeSandbox {
                 log::info!("Found HTTP proxy target");
                 let mut linker = component::Linker::new(&self.engine);
                 wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
-                wasmtime_wasi_http::add_only_http_to_linker_async(&mut linker)?;
+                wasmtime_wasi_http::p2::add_only_http_to_linker_async(&mut linker)?;
 
                 let pre = linker.instantiate_pre(&component)?;
                 log::info!("pre-instantiate_pre");
@@ -297,7 +300,10 @@ impl WasmtimeSandbox {
                 ))?;
 
                 log::debug!("running exported function {func:?} {start_func:?}");
-                start_func.call_async(&mut store, &[], &mut []).await
+                start_func
+                    .call_async(&mut store, &[], &mut [])
+                    .await
+                    .map_err(anyhow::Error::from)
             }
         };
 
@@ -409,6 +415,7 @@ fn load_custom_engine(
 
     let sandbox = WasmtimeSandbox {
         engine: wasmtime::Engine::new(&create_engine_config(&options, true)?)
+            .map_err(anyhow::Error::from)
             .context("failed to create wasmtime engine")?,
         cancel,
     };
@@ -442,7 +449,9 @@ fn env_map<'a>(envs: &'a [String]) -> EnvMap<'a> {
 fn create_precompile_engine(envs: &EnvMap<'_>) -> Result<wasmtime::Engine> {
     let options = load_config_from_envs(envs)?.unwrap_or_default();
     let config = create_engine_config(&options, false)?;
-    wasmtime::Engine::new(&config).context("failed to create wasmtime precompilation engine")
+    wasmtime::Engine::new(&config)
+        .map_err(anyhow::Error::from)
+        .context("failed to create wasmtime precompilation engine")
 }
 
 fn create_engine_config(
@@ -461,6 +470,7 @@ fn create_engine_config(
 
     let mut config = options
         .config(include_pooling.then(use_pooling_allocator_by_default))
+        .map_err(anyhow::Error::from)
         .context("failed to construct wasmtime::Config from workload config")?;
     if !include_pooling {
         config.allocation_strategy(wasmtime::InstanceAllocationStrategy::OnDemand);

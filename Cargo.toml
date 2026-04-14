@@ -54,10 +54,10 @@ cfg-if = "1.0"
 toml = "0.8"
 
 # wasmtime
-wasmtime = { version = "36.0.6", features = ["async", "gc"] }
-wasmtime-cli-flags = { version = "36.0.6", features = ["component-model", "gc", "parallel-compilation", "pooling-allocator"] }
-wasmtime-wasi = { version = "36.0.6" }
-wasmtime-wasi-http = { version = "36.0.6" }
+wasmtime = { version = "43.0.1", features = ["async", "gc"] }
+wasmtime-cli-flags = { version = "43.0.1", features = ["component-model", "gc", "parallel-compilation", "pooling-allocator"] }
+wasmtime-wasi = { version = "43.0.1" }
+wasmtime-wasi-http = { version = "43.0.1" }
 
 [profile.release]
 panic = "abort"
