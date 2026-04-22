@@ -75,7 +75,9 @@ impl Sandbox for WasmerSandbox {
             })
         });
 
-        wasi_env.on_exit(&mut store, status.as_ref().ok().map(|code| (*code).into()));
+        wasi_env
+            .data(&store)
+            .blocking_on_exit(status.as_ref().ok().map(|code| (*code).into()));
 
         status.map_err(Into::into)
     }
