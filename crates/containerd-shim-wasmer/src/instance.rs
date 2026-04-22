@@ -2,7 +2,6 @@ use anyhow::Result;
 use containerd_shim_wasm::sandbox::Sandbox;
 use containerd_shim_wasm::sandbox::context::{Entrypoint, RuntimeContext};
 use containerd_shim_wasm::shim::{Shim, Version, version};
-use tokio::runtime::Handle;
 use wasmer::{Module, Store};
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
 use wasmer_wasix::{WasiEnv, WasiError};
@@ -52,8 +51,17 @@ impl Sandbox for WasmerSandbox {
         let wasm_bytes = source.as_bytes()?;
         let module = Module::from_binary(&store, &wasm_bytes)?;
 
+        // This code runs in the container process after the shim forks.
+        // Reusing the parent Tokio runtime here is unsafe; Wasmer's virtual FS
+        // stores and uses a Tokio handle internally.
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?;
+        let handle = runtime.handle().clone();
+        let _guard = runtime.enter();
+
         log::info!("Creating `WasiEnv`...: args {args:?}, envs: {envs:?}");
-        let fs = FileSystem::new(Handle::current(), "/")?;
+        let fs = FileSystem::new(handle, "/")?;
         let (instance, wasi_env) = WasiEnv::builder(mod_name)
             .args(&args[1..])
             .envs(envs)
@@ -66,13 +74,11 @@ impl Sandbox for WasmerSandbox {
         log::info!("Running {func:?}");
         let start = instance.exports.get_function(&func)?;
         wasi_env.data(&store).thread.set_status_running();
-        let status = tokio::task::block_in_place(|| {
-            start.call(&mut store, &[]).map(|_| 0).or_else(|err| {
-                match err.downcast_ref::<WasiError>() {
-                    Some(WasiError::Exit(code)) => Ok(code.raw()),
-                    _ => Err(err),
-                }
-            })
+        let status = start.call(&mut store, &[]).map(|_| 0).or_else(|err| {
+            match err.downcast_ref::<WasiError>() {
+                Some(WasiError::Exit(code)) => Ok(code.raw()),
+                _ => Err(err),
+            }
         });
 
         wasi_env
