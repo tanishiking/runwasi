@@ -61,6 +61,8 @@ impl Sandbox for WasmerSandbox {
             .preopen_dir("/")?
             .instantiate(module, &mut store)?;
 
+        let _ = unsafe { wasi_env.bootstrap(&mut store)? };
+
         log::info!("Running {func:?}");
         let start = instance.exports.get_function(&func)?;
         wasi_env.data(&store).thread.set_status_running();
@@ -71,8 +73,10 @@ impl Sandbox for WasmerSandbox {
                     _ => Err(err),
                 }
             })
-        })?;
+        });
 
-        Ok(status)
+        wasi_env.on_exit(&mut store, status.as_ref().ok().map(|code| (*code).into()));
+
+        status.map_err(Into::into)
     }
 }
