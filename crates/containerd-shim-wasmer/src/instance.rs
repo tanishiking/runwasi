@@ -1,13 +1,13 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use containerd_shim_wasm::sandbox::Sandbox;
 use containerd_shim_wasm::sandbox::context::{Entrypoint, RuntimeContext};
 use containerd_shim_wasm::shim::{Shim, Version, version};
-use std::sync::Arc;
 use wasmer::{Module, Store};
+use wasmer_wasix::runtime::task_manager::tokio::TokioTaskManager;
 use wasmer_wasix::virtual_fs::host_fs::FileSystem;
-use wasmer_wasix::{
-    PluggableRuntime, WasiEnv, WasiError, runtime::task_manager::tokio::TokioTaskManager,
-};
+use wasmer_wasix::{PluggableRuntime, WasiEnv, WasiError};
 
 pub struct WasmerShim;
 
