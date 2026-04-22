@@ -10,7 +10,6 @@ log = { workspace = true }
 tokio = { workspace = true }
 
 wasmer = "6.1.0"
-wasmer-types = "6.1.0"
 wasmer-wasix = "0.601.0"
 mio = { version = "1", features = ["net"] }
 

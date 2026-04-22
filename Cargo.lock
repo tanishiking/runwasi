@@ -988,7 +988,6 @@ dependencies = [
  "serial_test",
  "tokio",
  "wasmer",
- "wasmer-types",
  "wasmer-wasix",
 ]
 
