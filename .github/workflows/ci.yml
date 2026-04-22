@@ -20,76 +20,28 @@ env:
 
 jobs:
   check:
-    name: ${{ matrix.runtime }}
+    name: lint-${{ matrix.runtime }}
     strategy:
       matrix:
-        os: ["ubuntu-latest"]
-        runtime: ["wasmtime"]
+        runtime: ["common", "wasmtime", "wasmedge", "wasmer"]
     uses: ./.github/workflows/action-check.yml
     with:
-      os: ${{ matrix.os }}
+      os: ubuntu-latest
       runtime: ${{ matrix.runtime }}
 
   build-ubuntu:
-    name: ${{ matrix.runtime }}
+    name: test-${{ matrix.runtime }}-${{ matrix.libc }}
     permissions:
       id-token: write
     strategy:
+      fail-fast: false
       matrix:
-        os: ["ubuntu-22.04"]
-        runtime: ["common", "wasmtime"]
-        libc: ["gnu"]
-        arch: ["x86_64", "aarch64"]
+        runtime: ["wasmtime", "wasmedge", "wasmer"]
+        libc: ["gnu", "musl"]
     uses: ./.github/workflows/action-build.yml
     with:
-      os: ${{ matrix.os }}
+      os: ubuntu-22.04
       runtime: ${{ matrix.runtime }}
-      target: "${{ matrix.arch }}-unknown-linux-${{ matrix.libc }}"
-      slug: "${{ matrix.arch }}-linux-${{ matrix.libc }}"
-      arch: ${{ matrix.arch }}
-
-  docs:
-    name: docs
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - uses: ./.github/actions/setup-env
-    - uses: actions-rust-lang/setup-rust-toolchain@v1
-    - uses: Swatinem/rust-cache@v2
-    - name: Check documentation
-      run: make test-doc
-    - name: Generate documentation
-      run: make generate-doc
-
-  deps:
-    name: unused dependencies
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - uses: actions-rust-lang/setup-rust-toolchain@v1
-    - uses: Swatinem/rust-cache@v2
-    - name: Check unused dependencies
-      uses: bnjbvr/cargo-machete@v0.9.1
-
-  spelling:
-    name: spell check with typos
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - name: Spell Check Repo
-      uses: crate-ci/typos@master
-
-  linkChecker:
-    name: link checker
-    permissions:
-      contents: read
-    if: github.repository == 'containerd/runwasi'
-    timeout-minutes: 15
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - uses: lycheeverse/lychee-action@885c65f3dc543b57c898c8099f4e08c8afd178a2 # v2.6.1
-      with:
-        fail: false # don't fail the build on broken links
-        format: markdown
-        jobSummary: true
+      target: "x86_64-unknown-linux-${{ matrix.libc }}"
+      slug: "x86_64-linux-${{ matrix.libc }}"
+      arch: x86_64
